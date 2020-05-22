@@ -1,6 +1,6 @@
 CC=g++
 
-CFLAGS= -O2
+CFLAGS= -O2 -march=native
 SQLFLAGS= `mysql_config --cflags --libs`
 
 # Comment this line to disable address check on login,
