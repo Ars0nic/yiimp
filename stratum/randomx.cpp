@@ -14,6 +14,10 @@
 #include "randomx.h"
 
 #include <cassert>
+#include <pthread.h>
+
+//ThreadSafety is a thing...
+pthread_mutex_t lock;
 
 //! barrystyle 03032020
 bool is_vm_init = false;
@@ -32,6 +36,8 @@ void randomx_init()
     randomx_initcache();
     randomx_initdataset();
     randomx_initvm();
+
+	pthread_mutex_init(&lock,NULL);
 }
 
 void randomx_initseed()
@@ -70,17 +76,21 @@ void randomx_shutoff()
         randomx_destroy_vm(vm);
     vm = nullptr;
     randomx_release_cache(cache);
+	pthread_mutex_destroy(&lock);
 }
 
 void seedNow(int nHeight)
 {
     uint256 tempCache;
     char tempStr[64];
+
+	pthread_mutex_lock(&lock);
     seedHash(tempCache, tempStr, nHeight);
     if (!memcmp(&tempCache,keyCache,32)) {
         printf("* changed seed at height %d\n", nHeight);
         memcpy(keyCache,&tempCache,32);
     }
+	pthread_mutex_unlock(&lock);
 }
 
 void seedHash(uint256 &seed, char *seedStr, int nHeight)
@@ -97,11 +107,13 @@ void seedHash(uint256 &seed, char *seedStr, int nHeight)
 void randomxhash(const char* input, char* output, unsigned int len)
 {
     char hash[32] = {0};
+	pthread_mutex_lock(&lock);
     if (!is_cache_init)
         randomx_initcache();
     if (!is_vm_init)
         randomx_initvm();
     randomx_calculate_hash(vm, input, len, hash);
+	pthread_mutex_unlock(&lock);
     memcpy(output, hash, 32);
 }
 
